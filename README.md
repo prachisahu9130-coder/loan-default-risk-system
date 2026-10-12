@@ -1,5 +1,9 @@
 # 🏦 Intelligent Loan Default Prediction & Risk Scoring System
+## 🚀 Live Demo
 
+**Try the application:** [Open Loan Default Risk Assessment](https://loan-default-risk-system-bmntu4wz8zneajwnmarjqh.streamlit.app/)
+
+**Source Code:** [View GitHub Repository](https://github.com/prachisahu9130-coder/loan-default-risk-system)
 ## 📌 Project Overview
 
 The **Intelligent Loan Default Prediction & Risk Scoring System** is a machine learning application that estimates the probability of credit default based on applicant information.
