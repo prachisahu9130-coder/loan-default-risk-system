@@ -344,6 +344,7 @@ if st.button(
         st.divider()
         
 
+
 # --------------------------------------------------
 # MODEL PERFORMANCE
 # --------------------------------------------------
@@ -360,136 +361,144 @@ st.write(
 DATA_PATH = BASE_DIR / "data" / "german.data"
 MODEL_PATH = BASE_DIR / "models" / "loan_risk_model.pkl"
 
-# German Credit dataset columns
-columns = [
-    "checking_status", "duration", "credit_history", "purpose",
-    "credit_amount", "savings_status", "employment",
-    "installment_rate", "personal_status_sex", "other_debtors",
-    "residence_since", "property", "age",
-    "other_installment_plans", "housing", "existing_credits",
-    "job", "num_dependents", "telephone", "foreign_worker",
-    "target",
-]
+if not DATA_PATH.exists():
+    st.info(
+        "Model performance charts are unavailable in this hosted demo "
+        "because the German Credit dataset is not included in the repository. "
+        "Loan predictions and SHAP explanations remain available."
+    )
 
-# Load evaluation data
-df = pd.read_csv(
-    DATA_PATH,
-    sep=r"\s+",
-    header=None,
-    names=columns,
-)
+else:
+    # German Credit dataset columns
+    columns = [
+        "checking_status", "duration", "credit_history", "purpose",
+        "credit_amount", "savings_status", "employment",
+        "installment_rate", "personal_status_sex", "other_debtors",
+        "residence_since", "property", "age",
+        "other_installment_plans", "housing", "existing_credits",
+        "job", "num_dependents", "telephone", "foreign_worker",
+        "target",
+    ]
 
-df["target"] = df["target"].map({1: 0, 2: 1})
+    # Load evaluation data
+    df = pd.read_csv(
+        DATA_PATH,
+        sep=r"\s+",
+        header=None,
+        names=columns,
+    )
 
-X = df.drop(columns=["target"])
-y = df["target"]
+    df["target"] = df["target"].map({1: 0, 2: 1})
 
-# Recreate the test split used in evaluate_model.py
-_, X_test, _, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.20,
-    random_state=42,
-    stratify=y,
-)
+    X = df.drop(columns=["target"])
+    y = df["target"]
 
-# Load model and calculate predictions
-evaluation_model = joblib.load(MODEL_PATH)
+    # Recreate the test split used in evaluate_model.py
+    _, X_test, _, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        random_state=42,
+        stratify=y,
+    )
 
-y_probability = evaluation_model.predict_proba(X_test)[:, 1]
+    # Load model and calculate predictions
+    evaluation_model = joblib.load(MODEL_PATH)
 
-THRESHOLD = 0.35
-y_pred = (y_probability >= THRESHOLD).astype(int)
+    y_probability = evaluation_model.predict_proba(X_test)[:, 1]
 
-# Calculate metrics dynamically
-accuracy = accuracy_score(y_test, y_pred)
-precision = precision_score(y_test, y_pred, zero_division=0)
-recall = recall_score(y_test, y_pred, zero_division=0)
-f1 = f1_score(y_test, y_pred, zero_division=0)
-auc = roc_auc_score(y_test, y_probability)
+    THRESHOLD = 0.35
+    y_pred = (y_probability >= THRESHOLD).astype(int)
 
-st.caption(
-    f"Classification threshold: {THRESHOLD:.0%} | "
-    f"Test samples: {len(y_test)}"
-)
+    # Calculate metrics dynamically
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, zero_division=0)
+    recall = recall_score(y_test, y_pred, zero_division=0)
+    f1 = f1_score(y_test, y_pred, zero_division=0)
+    auc = roc_auc_score(y_test, y_probability)
 
-col1, col2, col3 = st.columns(3)
+    st.caption(
+        f"Classification threshold: {THRESHOLD:.0%} | "
+        f"Test samples: {len(y_test)}"
+    )
 
-col1.metric("Accuracy", f"{accuracy:.1%}")
-col2.metric("ROC-AUC", f"{auc:.3f}")
-col3.metric("Precision (Bad Credit)", f"{precision:.1%}")
+    col1, col2, col3 = st.columns(3)
 
-col1, col2 = st.columns(2)
-col1.metric("Recall (Bad Credit)", f"{recall:.1%}")
-col2.metric("F1 Score (Bad Credit)", f"{f1:.3f}")
+    col1.metric("Accuracy", f"{accuracy:.1%}")
+    col2.metric("ROC-AUC", f"{auc:.3f}")
+    col3.metric("Precision (Bad Credit)", f"{precision:.1%}")
 
-# --------------------------------------------------
-# CONFUSION MATRIX
-# --------------------------------------------------
+    col1, col2 = st.columns(2)
+    col1.metric("Recall (Bad Credit)", f"{recall:.1%}")
+    col2.metric("F1 Score (Bad Credit)", f"{f1:.3f}")
 
-st.subheader("Confusion Matrix")
+    # --------------------------------------------------
+    # CONFUSION MATRIX
+    # --------------------------------------------------
 
-cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    st.subheader("Confusion Matrix")
 
-fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
 
-sns.heatmap(
-    cm,
-    annot=True,
-    fmt="d",
-    cmap="Blues",
-    xticklabels=["Good Credit", "Bad Credit"],
-    yticklabels=["Good Credit", "Bad Credit"],
-    ax=ax_cm,
-)
+    fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
 
-ax_cm.set_xlabel("Predicted Class")
-ax_cm.set_ylabel("Actual Class")
-ax_cm.set_title("Actual vs Predicted Credit Class")
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=["Good Credit", "Bad Credit"],
+        yticklabels=["Good Credit", "Bad Credit"],
+        ax=ax_cm,
+    )
 
-fig_cm.tight_layout()
-st.pyplot(fig_cm)
-plt.close(fig_cm)
+    ax_cm.set_xlabel("Predicted Class")
+    ax_cm.set_ylabel("Actual Class")
+    ax_cm.set_title("Actual vs Predicted Credit Class")
 
-st.caption(
-    "Rows represent actual classes; columns represent predicted classes. "
-    "Off-diagonal cells are classification errors."
-)
+    fig_cm.tight_layout()
+    st.pyplot(fig_cm)
+    plt.close(fig_cm)
 
-# --------------------------------------------------
-# ROC CURVE
-# --------------------------------------------------
+    st.caption(
+        "Rows represent actual classes; columns represent predicted classes. "
+        "Off-diagonal cells are classification errors."
+    )
 
-st.subheader("ROC Curve")
+    # --------------------------------------------------
+    # ROC CURVE
+    # --------------------------------------------------
 
-fpr, tpr, thresholds = roc_curve(y_test, y_probability)
+    st.subheader("ROC Curve")
 
-fig_roc, ax_roc = plt.subplots(figsize=(7, 4))
+    fpr, tpr, thresholds = roc_curve(y_test, y_probability)
 
-ax_roc.plot(
-    fpr,
-    tpr,
-    label=f"Logistic Regression (AUC = {auc:.3f})",
-)
+    fig_roc, ax_roc = plt.subplots(figsize=(7, 4))
 
-ax_roc.plot(
-    [0, 1],
-    [0, 1],
-    linestyle="--",
-    label="Random classifier",
-)
+    ax_roc.plot(
+        fpr,
+        tpr,
+        label=f"Logistic Regression (AUC = {auc:.3f})",
+    )
 
-ax_roc.set_xlabel("False Positive Rate")
-ax_roc.set_ylabel("True Positive Rate")
-ax_roc.set_title("Receiver Operating Characteristic")
-ax_roc.legend(loc="lower right")
-ax_roc.grid(alpha=0.25)
+    ax_roc.plot(
+        [0, 1],
+        [0, 1],
+        linestyle="--",
+        label="Random classifier",
+    )
 
-fig_roc.tight_layout()
-st.pyplot(fig_roc)
-plt.close(fig_roc)
+    ax_roc.set_xlabel("False Positive Rate")
+    ax_roc.set_ylabel("True Positive Rate")
+    ax_roc.set_title("Receiver Operating Characteristic")
+    ax_roc.legend(loc="lower right")
+    ax_roc.grid(alpha=0.25)
 
-st.caption(
-    "The ROC curve evaluates discrimination across thresholds. "
-    "The dashed diagonal represents random ranking."
-)
+    fig_roc.tight_layout()
+    st.pyplot(fig_roc)
+    plt.close(fig_roc)
+
+    st.caption(
+        "The ROC curve evaluates discrimination across thresholds. "
+        "The dashed diagonal represents random ranking."
+    )
