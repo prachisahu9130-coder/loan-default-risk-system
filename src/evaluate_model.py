@@ -1,4 +1,6 @@
 
+import numpy as np
+import json
 from pathlib import Path
 
 import joblib
@@ -67,6 +69,32 @@ y_probability = model.predict_proba(X_test)[:, 1]
 # The project uses a 0.35 threshold for classification.
 threshold = 0.35
 y_pred = (y_probability >= threshold).astype(int)
+# Save evaluation outputs for the deployed Streamlit app
+EVALUATION_DIR = BASE_DIR / "models" / "evaluation"
+EVALUATION_DIR.mkdir(parents=True, exist_ok=True)
+
+np.save(EVALUATION_DIR / "y_test.npy", y_test.to_numpy())
+np.save(EVALUATION_DIR / "y_probability.npy", y_probability)
+
+metrics = {
+    "threshold": threshold,
+    "accuracy": float(accuracy_score(y_test, y_pred)),
+    "precision": float(
+        precision_score(y_test, y_pred, zero_division=0)
+    ),
+    "recall": float(
+        recall_score(y_test, y_pred, zero_division=0)
+    ),
+    "f1_score": float(
+        f1_score(y_test, y_pred, zero_division=0)
+    ),
+    "roc_auc": float(roc_auc_score(y_test, y_probability)),
+}
+
+with open(EVALUATION_DIR / "evaluation_metrics.json", "w") as file:
+    json.dump(metrics, file, indent=4)
+
+print(f"\nEvaluation artifacts saved to: {EVALUATION_DIR}")
 
 print("\nMODEL EVALUATION")
 print("-" * 40)

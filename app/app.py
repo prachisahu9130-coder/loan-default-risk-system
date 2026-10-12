@@ -345,9 +345,13 @@ if st.button(
         
 
 
+
 # --------------------------------------------------
 # MODEL PERFORMANCE
 # --------------------------------------------------
+
+import json
+import numpy as np
 
 st.divider()
 st.header("📊 Model Performance")
@@ -357,91 +361,51 @@ st.write(
     "They describe overall performance, not the current applicant."
 )
 
-# Project paths
-DATA_PATH = BASE_DIR / "data" / "german.data"
-MODEL_PATH = BASE_DIR / "models" / "loan_risk_model.pkl"
+EVALUATION_DIR = BASE_DIR / "models" / "evaluation"
+Y_TEST_PATH = EVALUATION_DIR / "y_test.npy"
+Y_PROBABILITY_PATH = EVALUATION_DIR / "y_probability.npy"
+METRICS_PATH = EVALUATION_DIR / "evaluation_metrics.json"
 
-if not DATA_PATH.exists():
-    st.info(
-        "Model performance charts are unavailable in this hosted demo "
-        "because the German Credit dataset is not included in the repository. "
-        "Loan predictions and SHAP explanations remain available."
+if not all(
+    path.exists()
+    for path in [Y_TEST_PATH, Y_PROBABILITY_PATH, METRICS_PATH]
+):
+    st.warning(
+        "Evaluation files are missing. Run "
+        "`python src/evaluate_model.py` locally, then push the "
+        "generated models/evaluation files to GitHub."
     )
 
 else:
-    # German Credit dataset columns
-    columns = [
-        "checking_status", "duration", "credit_history", "purpose",
-        "credit_amount", "savings_status", "employment",
-        "installment_rate", "personal_status_sex", "other_debtors",
-        "residence_since", "property", "age",
-        "other_installment_plans", "housing", "existing_credits",
-        "job", "num_dependents", "telephone", "foreign_worker",
-        "target",
-    ]
+    y_test = np.load(Y_TEST_PATH)
+    y_probability = np.load(Y_PROBABILITY_PATH)
 
-    # Load evaluation data
-    df = pd.read_csv(
-        DATA_PATH,
-        sep=r"\s+",
-        header=None,
-        names=columns,
-    )
+    with open(METRICS_PATH, "r") as file:
+        metrics = json.load(file)
 
-    df["target"] = df["target"].map({1: 0, 2: 1})
-
-    X = df.drop(columns=["target"])
-    y = df["target"]
-
-    # Recreate the test split used in evaluate_model.py
-    _, X_test, _, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
-        random_state=42,
-        stratify=y,
-    )
-
-    # Load model and calculate predictions
-    evaluation_model = joblib.load(MODEL_PATH)
-
-    y_probability = evaluation_model.predict_proba(X_test)[:, 1]
-
-    THRESHOLD = 0.35
-    y_pred = (y_probability >= THRESHOLD).astype(int)
-
-    # Calculate metrics dynamically
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, zero_division=0)
-    recall = recall_score(y_test, y_pred, zero_division=0)
-    f1 = f1_score(y_test, y_pred, zero_division=0)
-    auc = roc_auc_score(y_test, y_probability)
+    threshold = metrics["threshold"]
+    y_pred = (y_probability >= threshold).astype(int)
 
     st.caption(
-        f"Classification threshold: {THRESHOLD:.0%} | "
+        f"Classification threshold: {threshold:.0%} | "
         f"Test samples: {len(y_test)}"
     )
 
     col1, col2, col3 = st.columns(3)
-
-    col1.metric("Accuracy", f"{accuracy:.1%}")
-    col2.metric("ROC-AUC", f"{auc:.3f}")
-    col3.metric("Precision (Bad Credit)", f"{precision:.1%}")
+    col1.metric("Accuracy", f"{metrics['accuracy']:.1%}")
+    col2.metric("ROC-AUC", f"{metrics['roc_auc']:.3f}")
+    col3.metric("Precision (Bad Credit)", f"{metrics['precision']:.1%}")
 
     col1, col2 = st.columns(2)
-    col1.metric("Recall (Bad Credit)", f"{recall:.1%}")
-    col2.metric("F1 Score (Bad Credit)", f"{f1:.3f}")
+    col1.metric("Recall (Bad Credit)", f"{metrics['recall']:.1%}")
+    col2.metric("F1 Score (Bad Credit)", f"{metrics['f1_score']:.3f}")
 
-    # --------------------------------------------------
-    # CONFUSION MATRIX
-    # --------------------------------------------------
-
+    # Confusion matrix
     st.subheader("Confusion Matrix")
 
     cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
 
     fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
-
     sns.heatmap(
         cm,
         annot=True,
@@ -461,26 +425,20 @@ else:
     plt.close(fig_cm)
 
     st.caption(
-        "Rows represent actual classes; columns represent predicted classes. "
-        "Off-diagonal cells are classification errors."
+        "Rows represent actual classes; columns represent predicted classes."
     )
 
-    # --------------------------------------------------
-    # ROC CURVE
-    # --------------------------------------------------
-
+    # ROC curve
     st.subheader("ROC Curve")
 
-    fpr, tpr, thresholds = roc_curve(y_test, y_probability)
+    fpr, tpr, _ = roc_curve(y_test, y_probability)
 
     fig_roc, ax_roc = plt.subplots(figsize=(7, 4))
-
     ax_roc.plot(
         fpr,
         tpr,
-        label=f"Logistic Regression (AUC = {auc:.3f})",
+        label=f"Logistic Regression (AUC = {metrics['roc_auc']:.3f})",
     )
-
     ax_roc.plot(
         [0, 1],
         [0, 1],
@@ -499,6 +457,6 @@ else:
     plt.close(fig_roc)
 
     st.caption(
-        "The ROC curve evaluates discrimination across thresholds. "
-        "The dashed diagonal represents random ranking."
+        "The ROC curve evaluates model discrimination across classification thresholds."
     )
+
