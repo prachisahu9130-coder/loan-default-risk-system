@@ -138,11 +138,6 @@ pip install -r requirements.txt
 ```bash
 streamlit run app/app.py
 ```
-
-Open the local URL displayed in the terminal.
-
-> Ensure any required local dataset or model artifacts are available. The evaluation artifacts and trained model must match the code and preprocessing pipeline used by the application.
-
 ## ⚠️ Limitations and Responsible Use
 
 - This is an educational portfolio project, not a production-ready lending or credit approval system.
