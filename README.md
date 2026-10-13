@@ -160,12 +160,12 @@ Open the local URL displayed in the terminal.
 - Add automated tests and continuous integration.
 - Improve input validation, logging, and deployment monitoring.
 
-## 👩‍💻 Author
+## 👩‍💻 About the Author
 
-**Prachi Sahu**
+**Prachi Sahu**  
+Aspiring AI/ML Engineer | Python | Machine Learning | Explainable AI
 
-- GitHub: [prachisahu9130-coder](https://github.com/prachisahu9130-coder)
+- **GitHub:** https://github.com/prachisahu9130-coder
+- **LinkedIn:** www.linkedin.com/in/prachi-sahu-ai3091
 
----
-
-*Built as a machine learning portfolio project to demonstrate model development, evaluation, explainability, and deployment.*
+I'm building practical AI and machine learning projects focused on explainability, automation, and real-world problem solving.
